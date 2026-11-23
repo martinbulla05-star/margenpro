@@ -1,21 +1,29 @@
 const fs = require('node:fs');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const source = fs.readFileSync('backend/worker.js','utf8');
-const sandbox = { URL, Response, Request, JSON };
-vm.runInNewContext(source.replace('export default','globalThis.worker ='), sandbox);
-const worker = sandbox.worker;
+const asUrl = path => 'data:text/javascript;base64,' + fs.readFileSync(path).toString('base64');
 (async () => {
+  let source = fs.readFileSync('backend/worker.js', 'utf8');
+  source = source.replace("'./auth.js'", JSON.stringify(asUrl('backend/auth.js')))
+    .replace("'./entitlements.js'", JSON.stringify(asUrl('backend/entitlements.js')));
+  const worker = (await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))).default;
   const health = await worker.fetch(new Request('https://example.test/api/health'), {});
-  assert.equal(health.status,200);
-  assert.equal((await health.json()).paymentsEnabled,false);
-  const checkout = await worker.fetch(new Request('https://example.test/api/checkout',{method:'POST'}),{});
-  assert.equal(checkout.status,503,'Checkout must fail closed without secure configuration');
-  const access = await worker.fetch(new Request('https://example.test/api/entitlement'),{});
-  assert.equal(access.status,401,'License lookup must require authentication');
-  const forged = await worker.fetch(new Request('https://example.test/api/entitlement',{headers:{'x-user-id':'admin','x-license':'active'}}),{});
-  assert.equal(forged.status,401,'Client-supplied identity or license headers must never grant access');
-  const headers = Object.fromEntries(checkout.headers);
-  assert.equal(headers['cache-control'],'no-store');
+  assert.equal(health.status, 200);
+  assert.equal((await health.json()).paymentsEnabled, false);
+  const checkout = await worker.fetch(new Request('https://example.test/api/checkout', { method: 'POST' }), {});
+  assert.equal(checkout.status, 503, 'Checkout must fail closed without secure configuration');
+  const access = await worker.fetch(new Request('https://example.test/api/entitlement'), {});
+  assert.equal(access.status, 503, 'License lookup must fail closed without auth and DB configuration');
+  const configured = { DB: { prepare() { throw Error('Database must not be queried without auth'); } },
+    AUTH_ISSUER: 'https://identity.example/', AUTH_AUDIENCE: 'margenpro',
+    AUTH_JWKS_URL: 'https://identity.example/keys' };
+  const noAuth = await worker.fetch(new Request('https://example.test/api/entitlement'), configured);
+  assert.equal(noAuth.status, 401);
+  const forged = await worker.fetch(new Request('https://example.test/api/entitlement',
+    { headers: { 'x-user-id': 'admin', 'x-license': 'active' } }), configured);
+  assert.equal(forged.status, 401, 'Forged client headers must not grant access');
+  const invalid = await worker.fetch(new Request('https://example.test/api/entitlement',
+    { headers: { authorization: 'Bearer not.a.real.token' } }), configured);
+  assert.equal(invalid.status, 401, 'Unsigned tokens must be rejected');
+  assert.equal(Object.fromEntries(checkout.headers)['cache-control'], 'no-store');
   console.log('Commercial API safety checks passed.');
-})().catch(e => { console.error(e); process.exitCode=1; });
+})().catch(e => { console.error(e); process.exitCode = 1; });
