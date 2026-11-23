@@ -43,6 +43,26 @@ CREATE TABLE IF NOT EXISTS payments (
   UNIQUE(provider, provider_payment_id)
 );
 
+-- An approved order must have a matching verified approved payment record.
+-- The backend alone is responsible for writing payments after provider API verification.
+CREATE TRIGGER IF NOT EXISTS trg_order_approval_requires_payment
+BEFORE UPDATE OF status ON orders
+WHEN NEW.status = 'approved' AND OLD.status <> 'approved'
+ AND NOT EXISTS (
+   SELECT 1 FROM payments p WHERE p.order_id = NEW.id
+     AND p.provider = NEW.provider AND p.status = 'approved'
+ )
+BEGIN
+ SELECT RAISE(ABORT, 'approved_order_requires_verified_payment_record');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_order_insert_approval_requires_payment
+BEFORE INSERT ON orders
+WHEN NEW.status = 'approved'
+BEGIN
+ SELECT RAISE(ABORT, 'approved_order_must_start_unapproved');
+END;
+
 CREATE TABLE IF NOT EXISTS entitlements (
   id TEXT PRIMARY KEY NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id),
