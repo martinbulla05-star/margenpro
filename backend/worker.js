@@ -12,6 +12,28 @@ export default {
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff'
     };
+    // Browsers may call this API only from the explicitly configured frontend origin.
+    // CORS is not authentication: all protected endpoints still validate the token.
+    const origin = request.headers.get('origin');
+    const allowedOrigin = typeof env?.FRONTEND_ORIGIN === 'string' &&
+      /^https:\/\/[^/]+$/.test(env.FRONTEND_ORIGIN) &&
+      !env.FRONTEND_ORIGIN.includes('REPLACE-') ? env.FRONTEND_ORIGIN : null;
+    if (origin && origin === allowedOrigin) {
+      headers['access-control-allow-origin'] = origin;
+      headers['vary'] = 'Origin';
+    }
+    if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      if (!origin || origin !== allowedOrigin ||
+          request.headers.get('access-control-request-method') !== 'GET' &&
+          request.headers.get('access-control-request-method') !== 'POST')
+        return new Response(null, { status: 403, headers });
+      return new Response(null, { status: 204, headers: {
+        ...headers,
+        'access-control-allow-methods': 'GET, POST',
+        'access-control-allow-headers': 'Authorization, Content-Type',
+        'access-control-max-age': '600'
+      } });
+    }
     const json = (status, payload) => new Response(JSON.stringify(payload), { status, headers });
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json(200, { service: 'margenpro-api', status: 'setup-required', paymentsEnabled: false });
