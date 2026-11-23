@@ -16,6 +16,10 @@ const asUrl = path => 'data:text/javascript;base64,' + fs.readFileSync(path).toS
   const configured = { DB: { prepare() { throw Error('Database must not be queried without auth'); } },
     AUTH_ISSUER: 'https://identity.example/', AUTH_AUDIENCE: 'margenpro',
     AUTH_JWKS_URL: 'https://identity.example/keys' };
+  const placeholder = await worker.fetch(new Request('https://example.test/api/entitlement',
+    { headers: { authorization: 'Bearer fake.token' } }),
+    { ...configured, AUTH_AUDIENCE: 'REPLACE-WITH-API-AUDIENCE' });
+  assert.equal(placeholder.status, 503, 'Example configuration must not enable authenticated endpoints');
   const noAuth = await worker.fetch(new Request('https://example.test/api/entitlement'), configured);
   assert.equal(noAuth.status, 401);
   const forged = await worker.fetch(new Request('https://example.test/api/entitlement',
