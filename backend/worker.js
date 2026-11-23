@@ -23,9 +23,12 @@ export default {
       headers['vary'] = 'Origin';
     }
     if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      const requestedMethod = request.headers.get('access-control-request-method');
+      const requestedHeaders = request.headers.get('access-control-request-headers') || '';
+      const safeHeaders = requestedHeaders.split(',').map(h => h.trim().toLowerCase())
+        .filter(Boolean).every(h => h === 'authorization' || h === 'content-type');
       if (!origin || origin !== allowedOrigin ||
-          request.headers.get('access-control-request-method') !== 'GET' &&
-          request.headers.get('access-control-request-method') !== 'POST')
+          !['GET', 'POST'].includes(requestedMethod) || !safeHeaders)
         return new Response(null, { status: 403, headers });
       return new Response(null, { status: 204, headers: {
         ...headers,
