@@ -43,6 +43,17 @@ const asUrl = path => 'data:text/javascript;base64,' + fs.readFileSync(path).toS
   }), corsEnv);
   assert.equal(rejectedOrigin.status, 403);
   assert.equal(rejectedOrigin.headers.get('access-control-allow-origin'), null);
+  const forbiddenHeader = await worker.fetch(new Request('https://example.test/api/entitlement', {
+    method: 'OPTIONS',
+    headers: { origin: corsEnv.FRONTEND_ORIGIN, 'access-control-request-method': 'GET',
+      'access-control-request-headers': 'authorization, x-user-id' }
+  }), corsEnv);
+  assert.equal(forbiddenHeader.status, 403, 'Unapproved request headers must be denied');
+  const forbiddenMethod = await worker.fetch(new Request('https://example.test/api/entitlement', {
+    method: 'OPTIONS',
+    headers: { origin: corsEnv.FRONTEND_ORIGIN, 'access-control-request-method': 'DELETE' }
+  }), corsEnv);
+  assert.equal(forbiddenMethod.status, 403, 'Unapproved request methods must be denied');
   const noWildcard = await worker.fetch(new Request('https://example.test/api/health', {
     headers: { origin: 'https://untrusted.example' }
   }), corsEnv);
