@@ -20,4 +20,5 @@ jobs:
           node tests/order-state.cjs
           node tests/entitlements.cjs
           node tests/auth.cjs
+          node tests/integration.cjs
           python3 tests/database.py
