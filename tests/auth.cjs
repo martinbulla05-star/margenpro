@@ -1,0 +1,30 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { webcrypto, generateKeyPairSync, sign } = require('node:crypto');
+const source = fs.readFileSync('backend/auth.js', 'utf8');
+const base64 = Buffer.from(source).toString('base64');
+const b64 = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+(async () => {
+  const { verifyAccessToken } = await import('data:text/javascript;base64,' + base64);
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = publicKey.export({ format: 'jwk' });
+  Object.assign(jwk, { kid: 'test-key', alg: 'RS256', use: 'sig' });
+  const config = { issuer: 'https://id.example.test/', audience: 'margenpro-api', jwksUrl: 'https://id.example.test/keys' };
+  const options = { now: 1800000000, crypto: webcrypto, fetcher: async () => ({ ok: true, json: async () => ({ keys: [jwk] }) }) };
+  const makeToken = (overrides = {}, headerOverrides = {}) => {
+    const h = b64({ alg: 'RS256', typ: 'JWT', kid: 'test-key', ...headerOverrides });
+    const p = b64({ iss: config.issuer, aud: config.audience, sub: 'user-123', iat: options.now - 30, exp: options.now + 3600, ...overrides });
+    const signature = sign('RSA-SHA256', Buffer.from(h + '.' + p), privateKey).toString('base64url');
+    return h + '.' + p + '.' + signature;
+  };
+  assert.equal((await verifyAccessToken(makeToken(), config, options)).subject, 'user-123');
+  await assert.rejects(verifyAccessToken(makeToken({ aud: 'other' }), config, options), /invalid_token_claims/);
+  await assert.rejects(verifyAccessToken(makeToken({ exp: options.now - 120 }), config, options), /invalid_token_claims/);
+  await assert.rejects(verifyAccessToken(makeToken({ iss: 'https:\/\/evil.test/' }), config, options), /invalid_token_claims/);
+  await assert.rejects(verifyAccessToken(makeToken({}, { alg: 'none' }), config, options), /unsupported_token_header/);
+  const tampered = makeToken().split('.');
+  tampered[1] = b64({ iss: config.issuer, aud: config.audience, sub: 'attacker', iat: options.now, exp: options.now + 3600 });
+  await assert.rejects(verifyAccessToken(tampered.join('.'), config, options), /invalid_signature/);
+  await assert.rejects(verifyAccessToken(makeToken(), { ...config, jwksUrl: 'http://id.example.test/keys' }, options), /invalid_jwks_url/);
+  console.log('OIDC RS256 verification tests passed.');
+})().catch(error => { console.error(error); process.exitCode = 1; });
