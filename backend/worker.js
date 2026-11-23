@@ -19,7 +19,9 @@ export default {
     if ((url.pathname === '/api/entitlement' || url.pathname === '/api/me') && request.method === 'GET' ||
         url.pathname === '/api/register' && request.method === 'POST') {
       // Configuration and database must be provided by the trusted server environment.
-      if (!env?.DB || !env.AUTH_ISSUER || !env.AUTH_AUDIENCE || !env.AUTH_JWKS_URL)
+      if (!env?.DB || !env.AUTH_ISSUER || !env.AUTH_AUDIENCE || !env.AUTH_JWKS_URL ||
+          [env.AUTH_ISSUER, env.AUTH_AUDIENCE, env.AUTH_JWKS_URL].some(value =>
+            typeof value !== 'string' || value.includes('REPLACE-')))
         return json(503, { error: 'authentication_not_configured' });
       const authorization = request.headers.get('authorization') || '';
       if (!/^Bearer [A-Za-z0-9_.-]+$/.test(authorization))
