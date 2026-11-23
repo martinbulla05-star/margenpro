@@ -19,6 +19,8 @@ assert.match(html,/margenpro_plantilla\.csv/);
 assert.match(html,/\['Producto de ejemplo','Mercado Libre'/);
 assert.match(html,/id="restore"/);
 assert.match(html,/id="csv"/);
+assert.match(html,/columnas obligatorias repetidas/);
+assert.match(html,/faltan columnas requeridas/);
 assert.match(html,/let existingKeys=new Set/);
 assert.match(html,/let duplicates=0/);
 assert.match(html,/Se agregarán igualmente como registros separados/);
