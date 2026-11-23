@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS payments (
   order_id TEXT NOT NULL REFERENCES orders(id),
   provider TEXT NOT NULL CHECK (provider = 'mercadopago'),
   provider_payment_id TEXT NOT NULL,
-  status TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
+  currency TEXT NOT NULL CHECK (length(currency) = 3 AND currency = upper(currency)),
+  status TEXT NOT NULL CHECK (status IN ('pending','approved','rejected','refunded')),
   verified_at TEXT NOT NULL,
   UNIQUE(provider, provider_payment_id)
 );
@@ -51,6 +53,7 @@ WHEN NEW.status = 'approved' AND OLD.status <> 'approved'
  AND NOT EXISTS (
    SELECT 1 FROM payments p WHERE p.order_id = NEW.id
      AND p.provider = NEW.provider AND p.status = 'approved'
+     AND p.amount_minor = NEW.amount_minor AND p.currency = NEW.currency
  )
 BEGIN
  SELECT RAISE(ABORT, 'approved_order_requires_verified_payment_record');
@@ -61,6 +64,18 @@ BEFORE INSERT ON orders
 WHEN NEW.status = 'approved'
 BEGIN
  SELECT RAISE(ABORT, 'approved_order_must_start_unapproved');
+END;
+
+-- Reject mismatched or fabricated-value payment records at the database boundary.
+CREATE TRIGGER IF NOT EXISTS trg_payment_order_amount_guard
+BEFORE INSERT ON payments
+WHEN NOT EXISTS (
+  SELECT 1 FROM orders o WHERE o.id = NEW.order_id
+    AND o.provider = NEW.provider
+    AND o.amount_minor = NEW.amount_minor AND o.currency = NEW.currency
+)
+BEGIN
+ SELECT RAISE(ABORT, 'payment_order_amount_mismatch');
 END;
 
 CREATE TABLE IF NOT EXISTS entitlements (
