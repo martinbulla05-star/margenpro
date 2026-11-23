@@ -29,5 +29,23 @@ const asUrl = path => 'data:text/javascript;base64,' + fs.readFileSync(path).toS
     { headers: { authorization: 'Bearer not.a.real.token' } }), configured);
   assert.equal(invalid.status, 401, 'Unsigned tokens must be rejected');
   assert.equal(Object.fromEntries(checkout.headers)['cache-control'], 'no-store');
+  const corsEnv = { ...configured, FRONTEND_ORIGIN: 'https://martinbulla05-star.github.io' };
+  const preflight = await worker.fetch(new Request('https://example.test/api/entitlement', {
+    method: 'OPTIONS',
+    headers: { origin: corsEnv.FRONTEND_ORIGIN, 'access-control-request-method': 'GET',
+      'access-control-request-headers': 'authorization' }
+  }), corsEnv);
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), corsEnv.FRONTEND_ORIGIN);
+  const rejectedOrigin = await worker.fetch(new Request('https://example.test/api/entitlement', {
+    method: 'OPTIONS',
+    headers: { origin: 'https://untrusted.example', 'access-control-request-method': 'GET' }
+  }), corsEnv);
+  assert.equal(rejectedOrigin.status, 403);
+  assert.equal(rejectedOrigin.headers.get('access-control-allow-origin'), null);
+  const noWildcard = await worker.fetch(new Request('https://example.test/api/health', {
+    headers: { origin: 'https://untrusted.example' }
+  }), corsEnv);
+  assert.equal(noWildcard.headers.get('access-control-allow-origin'), null);
   console.log('Commercial API safety checks passed.');
 })().catch(e => { console.error(e); process.exitCode = 1; });
