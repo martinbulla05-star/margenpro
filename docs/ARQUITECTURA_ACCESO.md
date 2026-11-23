@@ -1,6 +1,6 @@
-# MargenPro — contrato de acceso comercial (diseño, no implementado)
+# MargenPro — contrato de acceso comercial (implementación parcial, no desplegada)
 
-**Estado:** propuesta de arquitectura. La beta pública actual no tiene autenticación ni licencias. Ningún endpoint descrito aquí está desplegado.
+**Estado:** backend de autenticación y consulta de licencias implementado parcialmente, pero sin proveedor de identidad ni base de datos configurados. La beta pública actual no exige autenticación ni licencias. Ningún endpoint comercial está desplegado.
 
 ## Componentes
 - **Frontend**: interfaz de MargenPro (actualmente estática). No debe guardar secretos de pago.
@@ -9,11 +9,12 @@
 - **Base de datos**: usuarios, órdenes, pagos, permisos de acceso y auditoría mínima.
 - **Mercado Pago**: procesa pagos; el backend confirma su estado mediante API y notificaciones verificadas.
 
-## Endpoints propuestos (todos bajo HTTPS)
+## Endpoints de la arquitectura (todos bajo HTTPS; algunos aún no implementados)
 
 | Método | Ruta | Autenticación | Función |
 | --- | --- | --- | --- |
-| GET | /api/me | Obligatoria | Perfil mínimo del usuario autenticado |
+| GET | /api/me | Obligatoria | Consultar si la cuenta autenticada está registrada (sin escribir en la base) |
+| POST | /api/register | Obligatoria | Registrar de forma idempotente una identidad verificada |
 | GET | /api/entitlement | Obligatoria | Estado de licencia vigente, verificado en servidor |
 | POST | /api/checkout | Obligatoria | Crear orden y preferencia de pago con clave privada del servidor |
 | POST | /api/webhooks/mercadopago | Verificación de firma | Recibir notificación; consultar estado real del pago y actualizar licencia |
@@ -45,7 +46,7 @@
 - Acceso después de revocar licencia; usuario con licencia válida.
 - Revisión de costos, protección de datos y soporte.
 
-## Decisiones antes de programar cobros reales
+## Decisiones antes de activar cobros reales
 1. Elegir infraestructura para backend y autenticación.
 2. Elegir pago único o suscripción, y precio final.
 3. Configurar una cuenta de Mercado Pago bajo control del propietario.
