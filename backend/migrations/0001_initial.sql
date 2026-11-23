@@ -45,6 +45,19 @@ CREATE TABLE IF NOT EXISTS payments (
   UNIQUE(provider, provider_payment_id)
 );
 
+-- Enforce the same forward-only payment lifecycle as the application layer.
+-- Refunded, rejected and cancelled orders cannot be re-approved.
+CREATE TRIGGER IF NOT EXISTS trg_order_status_transition
+BEFORE UPDATE OF status ON orders
+WHEN OLD.status <> NEW.status AND NOT (
+  (OLD.status = 'created' AND NEW.status IN ('pending','approved','rejected','cancelled')) OR
+  (OLD.status = 'pending' AND NEW.status IN ('approved','rejected','cancelled')) OR
+  (OLD.status = 'approved' AND NEW.status = 'refunded')
+)
+BEGIN
+ SELECT RAISE(ABORT, 'invalid_order_status_transition');
+END;
+
 -- An approved order must have a matching verified approved payment record.
 -- The backend alone is responsible for writing payments after provider API verification.
 CREATE TRIGGER IF NOT EXISTS trg_order_approval_requires_payment
