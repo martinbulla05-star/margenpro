@@ -14,4 +14,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verificar archivos y cálculos
-        run: node tests/smoke.cjs
+        run: |\n          node tests/smoke.cjs\n          node tests/backend.cjs
