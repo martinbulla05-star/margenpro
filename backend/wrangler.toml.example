@@ -1,0 +1,18 @@
+# Cloudflare Worker deployment template — NOT active.
+# Copy to backend/wrangler.toml only after creating a Cloudflare account and D1 database.
+# Do not commit real IDs, credentials, tokens or private keys.
+name = "margenpro-api"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# Use the exact issuer and audience from the chosen OIDC identity provider.
+AUTH_ISSUER = "https://REPLACE-WITH-TRUSTED-ISSUER/"
+AUTH_AUDIENCE = "REPLACE-WITH-API-AUDIENCE"
+AUTH_JWKS_URL = "https://REPLACE-WITH-TRUSTED-ISSUER/.well-known/jwks.json"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "margenpro-commercial"
+database_id = "REPLACE-WITH-D1-DATABASE-ID"
+migrations_dir = "migrations"
