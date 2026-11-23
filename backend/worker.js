@@ -14,6 +14,11 @@ export default {
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json(200, { service: 'margenpro-api', status: 'setup-required', paymentsEnabled: false });
     }
+    if (url.pathname === '/api/entitlement' && request.method === 'GET') {
+      // Authentication is intentionally not configured. Never trust client-supplied
+      // identity or license headers, even when a D1 database is connected.
+      return json(401, { error: 'authentication_required' });
+    }
     if (!url.pathname.startsWith('/api/')) return json(404, { error: 'not_found' });
     if (!['GET', 'POST'].includes(request.method)) return json(405, { error: 'method_not_allowed' });
     // Fail closed: do not implement pseudo-authentication using a client-controlled header.
