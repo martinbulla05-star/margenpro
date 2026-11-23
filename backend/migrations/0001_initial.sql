@@ -82,10 +82,18 @@ END;
 -- A refunded or cancelled order must not leave an active license behind.
 CREATE TRIGGER IF NOT EXISTS trg_order_revoke_license
 AFTER UPDATE OF status ON orders
-WHEN NEW.status IN ('refunded','cancelled','rejected')
+WHEN NEW.status <> 'approved'
 BEGIN
   UPDATE entitlements SET status='revoked', revoked_at=datetime('now')
   WHERE order_id=NEW.id AND status='active';
+END;
+
+-- Prevent order reassignment after any entitlement has been issued.
+CREATE TRIGGER IF NOT EXISTS trg_order_immutable_license_owner
+BEFORE UPDATE OF user_id, product_id ON orders
+WHEN EXISTS (SELECT 1 FROM entitlements e WHERE e.order_id=OLD.id)
+BEGIN
+  SELECT RAISE(ABORT, 'licensed_order_owner_product_immutable');
 END;
 
 CREATE INDEX IF NOT EXISTS idx_entitlements_user_product ON entitlements(user_id, product_id, status);
