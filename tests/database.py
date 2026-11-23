@@ -22,7 +22,7 @@ def rejected(query, values=()):
 rejected("INSERT INTO users(id,identity_provider,identity_subject) VALUES ('u2','auth','sub1')")
 rejected("INSERT INTO orders(id,user_id,product_id,provider,amount_minor,currency) VALUES ('o2','missing','p1','mercadopago',100,'ARS')")
 rejected("INSERT INTO orders(id,user_id,product_id,provider,amount_minor,currency) VALUES ('o2','u1','p1','mercadopago',0,'ARS')")
-rejected("INSERT INTO orders(id,user_id,product_id,provider,amount_minor,currency) VALUES ('o2','u1','p1','mercadopago',100,'ARS'); DELETE FROM users")
+rejected("INSERT INTO orders(id,user_id,product_id,provider,amount_minor,currency,status) VALUES ('o2','u1','p1','mercadopago',100,'ARS','invalid')")
 rejected("INSERT INTO entitlements(id,user_id,product_id,order_id,status) VALUES ('e2','u1','p1','o1','active')")
 rejected("INSERT INTO entitlements(id,user_id,product_id,order_id,status) VALUES ('e2','u1','p1','o1','revoked')")
 db.execute("INSERT INTO payment_events(id,provider,provider_event_id) VALUES ('ev1','mercadopago','evt1')")
