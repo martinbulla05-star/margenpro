@@ -18,4 +18,5 @@ jobs:
           node tests/smoke.cjs
           node tests/backend.cjs
           node tests/order-state.cjs
+          node tests/entitlements.cjs
           python3 tests/database.py
