@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "MargenPro — Rentabilidad de tu catálogo",
+  "short_name": "MargenPro",
+  "description": "Calculadora de rentabilidad y precios para vendedores online",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#101827",
+  "lang": "es-AR",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
