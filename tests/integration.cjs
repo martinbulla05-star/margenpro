@@ -68,16 +68,24 @@ const dataUrl = file => 'data:text/javascript;base64,' + fs.readFileSync(file).t
     bad[1] = encode({ iss: env.AUTH_ISSUER, aud: env.AUTH_AUDIENCE, sub: 'subject-1',
       iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+3600, admin: true });
     assert.equal((await check(bad.join('.'))).status, 401);
-    const registration = await worker.fetch(new Request('https://example.test/api/me',
+    const beforeRegister = await worker.fetch(new Request('https://example.test/api/me',
       { headers: { authorization: 'Bearer ' + token('new-user') } }), env);
+    assert.equal(beforeRegister.status, 200);
+    assert.equal((await beforeRegister.json()).registered, false);
+    assert.equal(accounts.size, 0, 'GET profile must never create an account');
+    const registration = await worker.fetch(new Request('https://example.test/api/register',
+      { method: 'POST', headers: { authorization: 'Bearer ' + token('new-user') } }), env);
     assert.equal(registration.status, 200);
     assert.equal((await registration.json()).registered, true);
     assert.equal(accounts.size, 1);
-    const again = await worker.fetch(new Request('https://example.test/api/me',
-      { headers: { authorization: 'Bearer ' + token('new-user') } }), env);
+    const again = await worker.fetch(new Request('https://example.test/api/register',
+      { method: 'POST', headers: { authorization: 'Bearer ' + token('new-user') } }), env);
     assert.equal(again.status, 200);
     assert.equal(accounts.size, 1, 'Repeat sign-in must not duplicate the account');
-    const unsigned = await worker.fetch(new Request('https://example.test/api/me'), env);
+    const afterRegister = await worker.fetch(new Request('https://example.test/api/me',
+      { headers: { authorization: 'Bearer ' + token('new-user') } }), env);
+    assert.equal((await afterRegister.json()).registered, true);
+    const unsigned = await worker.fetch(new Request('https://example.test/api/register', { method: 'POST' }), env);
     assert.equal(unsigned.status, 401, 'Account creation requires a signed token');
     console.log('Signed token to D1 entitlement integration checks passed.');
   } finally {
