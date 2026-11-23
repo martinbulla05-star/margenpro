@@ -19,6 +19,9 @@ db.execute("""INSERT INTO orders(id,user_id,product_id,provider,provider_referen
  VALUES ('o1','u1','p1','mercadopago','ref1',1000,'ARS')""")
 rejected("""INSERT INTO entitlements(id,user_id,product_id,order_id,status)
  VALUES ('e1','u1','p1','o1','active')""")
+# A pending payment must not authorize an order.
+db.execute("INSERT INTO payments(id,order_id,provider,provider_payment_id,amount_minor,currency,status,verified_at) VALUES ('pending1','o1','mercadopago','mp-pending',1000,'ARS','pending','2026-01-01')")
+rejected("UPDATE orders SET status='approved' WHERE id='o1'")
 rejected("UPDATE orders SET status='approved' WHERE id='o1'")
 db.execute("INSERT INTO payments(id,order_id,provider,provider_payment_id,amount_minor,currency,status,verified_at) VALUES ('pay1','o1','mercadopago','mp1',1000,'ARS','approved','2026-01-01')")
 rejected("INSERT INTO payments(id,order_id,provider,provider_payment_id,amount_minor,currency,status,verified_at) VALUES ('bad1','o1','mercadopago','wrongamount',999,'ARS','approved','2026-01-01')")
