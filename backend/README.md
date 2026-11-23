@@ -23,7 +23,7 @@
    node tests/integration.cjs
    python3 tests/database.py
    ```
-6. Configurar dominio HTTPS y política CORS restringida al frontend autorizado antes de conectar el navegador. No usar `Access-Control-Allow-Origin: *` para endpoints autenticados.
+6. Configurar dominio HTTPS y `FRONTEND_ORIGIN` con el origen exacto del frontend (por ejemplo, `https://martinbulla05-star.github.io` sin ruta). El Worker admite solicitudes preflight únicamente desde ese origen; CORS no sustituye la autenticación. No usar `Access-Control-Allow-Origin: *` para endpoints autenticados.
 7. Probar en un entorno aislado usuarios nuevos, existentes, tokens inválidos, licencia ausente, licencia vencida, reembolso y fallos de base de datos.
 8. **Antes de cobrar**: implementar checkout, validación de firma de webhooks, consulta al API de Mercado Pago, idempotencia y reembolsos; aprobar precio y modalidad; revisar términos, privacidad y soporte.
 9. **Antes de vender**: mover funciones comerciales protegidas al backend o a un mecanismo que realmente exija autorización. Un frontend estático público no puede ocultar código ni impedir su uso mediante un simple indicador local.
