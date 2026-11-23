@@ -58,10 +58,13 @@ rejected("UPDATE entitlements SET user_id='u2' WHERE id='e2'")
 rejected("UPDATE entitlements SET product_id='p2' WHERE id='e2'")
 rejected("UPDATE orders SET user_id='u2' WHERE id='o2'")
 rejected("UPDATE orders SET product_id='p2' WHERE id='o2'")
-db.execute("UPDATE orders SET status='pending' WHERE id='o2'")
+rejected("UPDATE orders SET status='pending' WHERE id='o2'")
+db.execute("UPDATE orders SET status='refunded' WHERE id='o2'")
 assert db.execute("SELECT status FROM entitlements WHERE id='e2'").fetchone()[0] == 'revoked'
+rejected("UPDATE orders SET status='approved' WHERE id='o2'")
 
 db.execute("UPDATE orders SET status='refunded' WHERE id='o1'")
 assert db.execute("SELECT status FROM entitlements WHERE id='e1'").fetchone()[0] == 'revoked'
 rejected("UPDATE entitlements SET status='active',revoked_at=NULL WHERE id='e1'")
+rejected("UPDATE orders SET status='approved' WHERE id='o1'")
 print("Database schema and integrity checks passed.")
