@@ -16,7 +16,8 @@ export default {
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json(200, { service: 'margenpro-api', status: 'setup-required', paymentsEnabled: false });
     }
-    if ((url.pathname === '/api/entitlement' || url.pathname === '/api/me') && request.method === 'GET') {
+    if ((url.pathname === '/api/entitlement' || url.pathname === '/api/me') && request.method === 'GET' ||
+        url.pathname === '/api/register' && request.method === 'POST') {
       // Configuration and database must be provided by the trusted server environment.
       if (!env?.DB || !env.AUTH_ISSUER || !env.AUTH_AUDIENCE || !env.AUTH_JWKS_URL)
         return json(503, { error: 'authentication_not_configured' });
@@ -33,7 +34,7 @@ export default {
       } catch {
         return json(401, { error: 'invalid_credentials' });
       }
-      if (url.pathname === '/api/me') {
+      if (url.pathname === '/api/register') {
         try {
           // Register only identities verified cryptographically by the trusted issuer.
           // INSERT OR IGNORE handles concurrent first sign-ins without duplicate accounts.
@@ -47,6 +48,16 @@ export default {
           return json(200, { authenticated: true, registered: true });
         } catch {
           return json(503, { error: 'account_registration_unavailable' });
+        }
+      }
+      if (url.pathname === '/api/me') {
+        try {
+          const user = await env.DB.prepare(
+            'SELECT id FROM users WHERE identity_provider = ?1 AND identity_subject = ?2 LIMIT 1'
+          ).bind(identity.issuer, identity.subject).first();
+          return json(200, { authenticated: true, registered: Boolean(user) });
+        } catch {
+          return json(503, { error: 'account_lookup_unavailable' });
         }
       }
       const product = url.searchParams.get('product') || 'margenpro';
