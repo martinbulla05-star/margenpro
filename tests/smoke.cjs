@@ -40,4 +40,19 @@ for(const {p,expected} of cases){
 const result=productionCalc({price:2000,cost:1000,shipping:0,other:0,fee:10,tax:5});
 assert.ok(Math.abs(result.suggested-1538.4615384615386)<1e-7,'Production target-price mismatch');
 assert.equal(productionCalc({price:2000,cost:1000,shipping:0,other:0,fee:80,tax:5}).suggested,null,'Impossible target must be unavailable');
+// Validate the real catalog input guard.
+const validateSource = scripts[0].match(/function validate\(p\)\{[\s\S]*?\}\s*function uid\(/)?.[0];
+assert.ok(validateSource,'Production validator must be discoverable');
+const validate = vm.runInNewContext(validateSource.replace(/\s*function uid\($/,'')+'; validate',{Number});
+const base={name:'Producto',channel:'Mercado Libre',price:1000,cost:400,fee:12,tax:5,shipping:50,other:0};
+assert.equal(validate(base),true,'Valid product should pass');
+assert.equal(validate({...base,price:0}),false,'Zero price must be rejected');
+assert.equal(validate({...base,fee:95,tax:10}),false,'Impossible fee + tax must be rejected');
+assert.equal(validate({...base,cost:-1}),false,'Negative cost must be rejected');
+assert.equal(validate({...base,price:Infinity}),false,'Non-finite values must be rejected');
+assert.equal(validate({...base,name:'<script>alert(1)</script>'}),true,'Product names are accepted as data and must be escaped at render time');
+const safeSource=scripts[0].match(/function safe\(v\)\{[\s\S]*?\}\s*function toast\(/)?.[0];
+assert.ok(safeSource,'Production HTML escape must be discoverable');
+const safe=vm.runInNewContext(safeSource.replace(/\s*function toast\($/,'')+'; safe');
+assert.equal(safe('<script>alert("x")</script>'),'&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;','Names must be HTML escaped');
 console.log('MargenPro smoke tests OK: syntax, essential UI, disclosures and finance scenarios.');
