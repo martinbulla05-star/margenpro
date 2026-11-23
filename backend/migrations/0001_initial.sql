@@ -55,6 +55,39 @@ CREATE TABLE IF NOT EXISTS entitlements (
   CHECK (status <> 'revoked' OR revoked_at IS NOT NULL)
 );
 
+-- Licenses may be activated only for an approved order owned by the same user
+-- and for the same commercial product.
+CREATE TRIGGER IF NOT EXISTS trg_entitlement_insert_guard
+BEFORE INSERT ON entitlements
+WHEN NEW.status = 'active' AND NOT EXISTS (
+  SELECT 1 FROM orders o WHERE o.id = NEW.order_id
+    AND o.user_id = NEW.user_id AND o.product_id = NEW.product_id
+    AND o.status = 'approved'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'active_license_requires_approved_matching_order');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_entitlement_update_guard
+BEFORE UPDATE OF status, user_id, product_id, order_id ON entitlements
+WHEN NEW.status = 'active' AND NOT EXISTS (
+  SELECT 1 FROM orders o WHERE o.id = NEW.order_id
+    AND o.user_id = NEW.user_id AND o.product_id = NEW.product_id
+    AND o.status = 'approved'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'active_license_requires_approved_matching_order');
+END;
+
+-- A refunded or cancelled order must not leave an active license behind.
+CREATE TRIGGER IF NOT EXISTS trg_order_revoke_license
+AFTER UPDATE OF status ON orders
+WHEN NEW.status IN ('refunded','cancelled','rejected')
+BEGIN
+  UPDATE entitlements SET status='revoked', revoked_at=datetime('now')
+  WHERE order_id=NEW.id AND status='active';
+END;
+
 CREATE INDEX IF NOT EXISTS idx_entitlements_user_product ON entitlements(user_id, product_id, status);
 
 CREATE TABLE IF NOT EXISTS payment_events (
