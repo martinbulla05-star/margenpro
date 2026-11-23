@@ -23,6 +23,7 @@ const dataUrl = file => 'data:text/javascript;base64,' + fs.readFileSync(file).t
       sub, iat: Math.floor(Date.now() / 1000) - 30, exp: Math.floor(Date.now() / 1000) + 3600 });
     return h + '.' + p + '.' + sign('RSA-SHA256', Buffer.from(h + '.' + p), privateKey).toString('base64url');
   };
+  const accounts = new Map();
   const queries = [];
   const env = {
     AUTH_ISSUER: 'https://identity.example/', AUTH_AUDIENCE: 'margenpro-api',
@@ -30,11 +31,23 @@ const dataUrl = file => 'data:text/javascript;base64,' + fs.readFileSync(file).t
     DB: { prepare(sql) {
       return { bind(...args) {
         queries.push({ sql, args });
-        return { async first() {
-          if (sql.includes('FROM users')) return args[1] === 'subject-1' ? { id: 'internal-user-7' } : null;
-          if (sql.includes('FROM entitlements')) return { id: 'license-7', expires_at: null };
-          throw Error('Unexpected query');
-        } };
+        return {
+          async run() {
+            if (!sql.includes('INSERT OR IGNORE INTO users')) throw Error('Unexpected write');
+            const key = args[1] + ':' + args[2];
+            if (!accounts.has(key)) accounts.set(key, args[0]);
+            return { success: true };
+          },
+          async first() {
+            if (sql.includes('FROM users')) {
+              const key = args[0] + ':' + args[1];
+              if (accounts.has(key)) return { id: accounts.get(key) };
+              return args[1] === 'subject-1' ? { id: 'internal-user-7' } : null;
+            }
+            if (sql.includes('FROM entitlements')) return { id: 'license-7', expires_at: null };
+            throw Error('Unexpected query');
+          }
+        };
       } };
     } }
   };
@@ -55,6 +68,17 @@ const dataUrl = file => 'data:text/javascript;base64,' + fs.readFileSync(file).t
     bad[1] = encode({ iss: env.AUTH_ISSUER, aud: env.AUTH_AUDIENCE, sub: 'subject-1',
       iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000)+3600, admin: true });
     assert.equal((await check(bad.join('.'))).status, 401);
+    const registration = await worker.fetch(new Request('https://example.test/api/me',
+      { headers: { authorization: 'Bearer ' + token('new-user') } }), env);
+    assert.equal(registration.status, 200);
+    assert.equal((await registration.json()).registered, true);
+    assert.equal(accounts.size, 1);
+    const again = await worker.fetch(new Request('https://example.test/api/me',
+      { headers: { authorization: 'Bearer ' + token('new-user') } }), env);
+    assert.equal(again.status, 200);
+    assert.equal(accounts.size, 1, 'Repeat sign-in must not duplicate the account');
+    const unsigned = await worker.fetch(new Request('https://example.test/api/me'), env);
+    assert.equal(unsigned.status, 401, 'Account creation requires a signed token');
     console.log('Signed token to D1 entitlement integration checks passed.');
   } finally {
     globalThis.fetch = originalFetch;
