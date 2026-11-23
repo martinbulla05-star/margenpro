@@ -78,6 +78,29 @@ BEGIN
  SELECT RAISE(ABORT, 'payment_order_amount_mismatch');
 END;
 
+-- Financial facts are immutable after insertion. Corrections require a new
+-- verified payment event, never editing a previously recorded payment.
+CREATE TRIGGER IF NOT EXISTS trg_payment_immutable
+BEFORE UPDATE ON payments
+BEGIN
+  SELECT RAISE(ABORT, 'verified_payment_immutable');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_payment_no_delete
+BEFORE DELETE ON payments
+BEGIN
+  SELECT RAISE(ABORT, 'verified_payment_no_delete');
+END;
+
+-- Prevent changing the amount, currency or provider of an existing order
+-- after a verified payment has been recorded.
+CREATE TRIGGER IF NOT EXISTS trg_paid_order_terms_immutable
+BEFORE UPDATE OF amount_minor, currency, provider ON orders
+WHEN EXISTS (SELECT 1 FROM payments p WHERE p.order_id=OLD.id)
+BEGIN
+  SELECT RAISE(ABORT, 'paid_order_terms_immutable');
+END;
+
 CREATE TABLE IF NOT EXISTS entitlements (
   id TEXT PRIMARY KEY NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id),
