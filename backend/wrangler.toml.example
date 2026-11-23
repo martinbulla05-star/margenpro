@@ -7,6 +7,7 @@ compatibility_date = "2026-11-01"
 
 [vars]
 # Use the exact issuer and audience from the chosen OIDC identity provider.
+FRONTEND_ORIGIN = "https://martinbulla05-star.github.io"
 AUTH_ISSUER = "https://REPLACE-WITH-TRUSTED-ISSUER/"
 AUTH_AUDIENCE = "REPLACE-WITH-API-AUDIENCE"
 AUTH_JWKS_URL = "https://REPLACE-WITH-TRUSTED-ISSUER/.well-known/jwks.json"
