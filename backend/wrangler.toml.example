@@ -12,6 +12,14 @@ AUTH_ISSUER = "https://REPLACE-WITH-TRUSTED-ISSUER/"
 AUTH_AUDIENCE = "REPLACE-WITH-API-AUDIENCE"
 AUTH_JWKS_URL = "https://REPLACE-WITH-TRUSTED-ISSUER/.well-known/jwks.json"
 
+# Keep payments disabled until sandbox verification and deployment review.
+PAYMENTS_ENABLED = "false"
+PRICE_MINOR = "REPLACE-WITH-PRICE-IN-CENTS"
+MP_COLLECTOR_ID = "REPLACE-WITH-MERCHANT-ID"
+CHECKOUT_RETURN_URL = "https://martinbulla05-star.github.io/margenpro/"
+MP_NOTIFICATION_URL = "https://REPLACE-WITH-API-HOST/api/webhooks/mercadopago"
+# MP_ACCESS_TOKEN and MP_WEBHOOK_SECRET must be provisioned as Worker secrets.
+
 [[d1_databases]]
 binding = "DB"
 database_name = "margenpro-commercial"
