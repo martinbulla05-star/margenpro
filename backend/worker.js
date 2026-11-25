@@ -1,3 +1,7 @@
+import { createOrder } from './orders.js';
+import { buildPreference } from './checkout.js';
+import { createPreference } from './mercadopago.js';
+import { handlePaymentNotification } from './payment-notification.js';
 import { verifyAccessToken } from './auth.js';
 import { findActiveEntitlement } from './entitlements.js';
 // MargenPro commercial API starter — NOT deployed.
@@ -41,8 +45,13 @@ export default {
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json(200, { service: 'margenpro-api', status: 'setup-required', paymentsEnabled: false });
     }
+    if (url.pathname === '/api/webhooks/mercadopago' && request.method === 'POST') {
+      if (env?.PAYMENTS_ENABLED !== 'true') return json(503,{error:'payments_disabled'});
+      const result = await handlePaymentNotification(request,env);
+      return json(result.status,result.body);
+    }
     if ((url.pathname === '/api/entitlement' || url.pathname === '/api/me') && request.method === 'GET' ||
-        url.pathname === '/api/register' && request.method === 'POST') {
+        ['/api/register','/api/checkout'].includes(url.pathname) && request.method === 'POST') {
       // Configuration and database must be provided by the trusted server environment.
       if (!env?.DB || !env.AUTH_ISSUER || !env.AUTH_AUDIENCE || !env.AUTH_JWKS_URL ||
           [env.AUTH_ISSUER, env.AUTH_AUDIENCE, env.AUTH_JWKS_URL].some(value =>
@@ -60,6 +69,23 @@ export default {
         });
       } catch {
         return json(401, { error: 'invalid_credentials' });
+      }
+      if (url.pathname === '/api/checkout') {
+        if (env.PAYMENTS_ENABLED !== 'true' || !env.MP_ACCESS_TOKEN || !env.MP_WEBHOOK_SECRET ||
+            !env.MP_COLLECTOR_ID || !env.CHECKOUT_RETURN_URL || !env.MP_NOTIFICATION_URL ||
+            !/^[1-9][0-9]*$/.test(env.PRICE_MINOR || ''))
+          return json(503,{error:'payments_disabled'});
+        try {
+          const user = await env.DB.prepare('SELECT id FROM users WHERE identity_provider = ?1 AND identity_subject = ?2 LIMIT 1')
+            .bind(identity.issuer,identity.subject).first();
+          if (!user) return json(403,{error:'registration_required'});
+          const existing = await findActiveEntitlement(env.DB,user.id,'margenpro');
+          if (existing.active) return json(409,{error:'already_licensed'});
+          const order = await createOrder(env.DB,user.id,Number(env.PRICE_MINOR));
+          const preference = buildPreference(order,env.CHECKOUT_RETURN_URL,env.MP_NOTIFICATION_URL);
+          const checkout = await createPreference(preference,env.MP_ACCESS_TOKEN);
+          return json(200,{orderId:order.id,checkoutUrl:checkout.checkoutUrl});
+        } catch { return json(503,{error:'checkout_unavailable'}); }
       }
       if (url.pathname === '/api/register') {
         try {
