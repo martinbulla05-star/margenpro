@@ -34,3 +34,7 @@
 - El backend no expone claves privadas de pago.
 - Los parámetros OIDC deben configurarse desde la cuenta del propietario. El código no ofrece aún gestión de contraseñas, recuperación ni verificación de correo: esas tareas corresponden al proveedor elegido.
 - Las pruebas con dobles de base de datos **no equivalen** a una prueba de despliegue real.
+
+## Commercial launch gate
+
+The public beta is not a protected paid application. Before enabling payments, deploy D1 and the Worker, configure an OIDC provider with Authorization Code + PKCE and API access tokens, connect cuenta.html to commercial-client.mjs, enforce paid features server-side, implement refund reconciliation, and verify end-to-end sandbox purchase and duplicate notifications. Keep PAYMENTS_ENABLED=false until all gates pass. Never commit credentials.
