@@ -66,4 +66,13 @@ db.execute("UPDATE orders SET status='refunded' WHERE id='o1'")
 assert db.execute("SELECT status FROM entitlements WHERE id='e1'").fetchone()[0] == 'revoked'
 rejected("UPDATE entitlements SET status='active',revoked_at=NULL WHERE id='e1'")
 rejected("UPDATE orders SET status='approved' WHERE id='o1'")
+# Validate product seed on a fresh database and verify repeat application.
+catalog = sqlite3.connect(":memory:")
+catalog.executescript(Path("backend/migrations/0001_initial.sql").read_text())
+seed = Path("backend/migrations/0002_product_catalog.sql").read_text()
+catalog.executescript(seed)
+catalog.executescript(seed)
+assert catalog.execute("SELECT id, code, name FROM products").fetchall() == [
+    ("margenpro-core", "margenpro", "MargenPro")
+]
 print("Database schema and integrity checks passed.")
