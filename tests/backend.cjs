@@ -2,10 +2,7 @@ const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const asUrl = path => 'data:text/javascript;base64,' + fs.readFileSync(path).toString('base64');
 (async () => {
-  let source = fs.readFileSync('backend/worker.js', 'utf8');
-  source = source.replace("'./auth.js'", JSON.stringify(asUrl('backend/auth.js')))
-    .replace("'./entitlements.js'", JSON.stringify(asUrl('backend/entitlements.js')));
-  const worker = (await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))).default;
+  const worker = (await import('../backend/worker.js')).default;
   const health = await worker.fetch(new Request('https://example.test/api/health'), {});
   assert.equal(health.status, 200);
   assert.equal((await health.json()).paymentsEnabled, false);
