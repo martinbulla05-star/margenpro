@@ -25,4 +25,5 @@ jobs:
           node tests/checkout.cjs
           node tests/payment-validation.cjs
           node tests/mercadopago.cjs
+          node tests/commercial-client.cjs
           python3 tests/database.py
