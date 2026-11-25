@@ -17,8 +17,8 @@ export async function findActiveEntitlement(db, verifiedUserId, productCode, now
       AND o.user_id = e.user_id
       AND o.product_id = e.product_id
       AND o.status = 'approved'
-      AND (e.expires_at IS NULL OR e.expires_at > ?3)
-    ORDER BY e.granted_at DESC
+      AND (e.expires_at IS NULL OR julianday(e.expires_at) > julianday(?3))
+    ORDER BY julianday(e.granted_at) DESC, e.id DESC
     LIMIT 1
   `).bind(verifiedUserId, productCode, now.toISOString()).first();
   return row ? { active: true, entitlementId: row.id, expiresAt: row.expires_at } : { active: false };
