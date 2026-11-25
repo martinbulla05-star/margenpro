@@ -3,10 +3,7 @@ const fs = require('node:fs');
 const { generateKeyPairSync, sign, webcrypto } = require('node:crypto');
 const dataUrl = file => 'data:text/javascript;base64,' + fs.readFileSync(file).toString('base64');
 (async () => {
-  const source = fs.readFileSync('backend/worker.js', 'utf8')
-    .replace("'./auth.js'", JSON.stringify(dataUrl('backend/auth.js')))
-    .replace("'./entitlements.js'", JSON.stringify(dataUrl('backend/entitlements.js')));
-  const worker = (await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))).default;
+  const worker = (await import('../backend/worker.js')).default;
   const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'test', use: 'sig', alg: 'RS256' };
   const originalFetch = globalThis.fetch;
