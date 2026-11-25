@@ -23,4 +23,5 @@ jobs:
           node tests/integration.cjs
           node tests/orders.cjs
           node tests/checkout.cjs
+          node tests/payment-validation.cjs
           python3 tests/database.py
